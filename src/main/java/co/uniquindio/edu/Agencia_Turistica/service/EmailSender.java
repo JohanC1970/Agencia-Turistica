@@ -36,4 +36,18 @@ public class EmailSender {
         helper.setText(html, true);
         helper.setFrom(correoReminente);
     }
+
+    public void enviarCodigoRecuperacion(String destino, String codigo) throws IOException, MessagingException {
+
+        String ruta = "src/main/resources/templates/email-recuperacion.html";
+        String html = new String(Files.readAllBytes(Paths.get(ruta)), StandardCharsets.UTF_8);
+        html = html.replace("{CODIGO_RECUPERACION}", codigo);
+
+        MimeMessage mensaje = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(mensaje, true, "UTF-8");
+        helper.setTo(destino);
+        helper.setSubject("Código de verificación");
+        helper.setText(html, true);
+        helper.setFrom(correoReminente);
+    }
 }

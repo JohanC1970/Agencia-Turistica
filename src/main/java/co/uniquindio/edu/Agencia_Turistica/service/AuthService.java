@@ -1,10 +1,11 @@
 package co.uniquindio.edu.Agencia_Turistica.service;
 
+import co.uniquindio.edu.Agencia_Turistica.config.CodigoVerificacionConfig;
 import co.uniquindio.edu.Agencia_Turistica.dto.ClienteDTO;
 import co.uniquindio.edu.Agencia_Turistica.dto.LoginDTO;
 import co.uniquindio.edu.Agencia_Turistica.dto.response.LoginResponseDTO;
 import co.uniquindio.edu.Agencia_Turistica.dto.response.UsuarioResponseDTO;
-import co.uniquindio.edu.Agencia_Turistica.exception.UsuarioNoEncontradoExeption;
+import co.uniquindio.edu.Agencia_Turistica.exception.UsuarioNoEncontradoException;
 import co.uniquindio.edu.Agencia_Turistica.exception.ValidacionException;
 import co.uniquindio.edu.Agencia_Turistica.model.Cliente;
 import co.uniquindio.edu.Agencia_Turistica.model.Rol;
@@ -30,19 +31,21 @@ public class AuthService {
     private final ClienteRepository clienteRepository;
     private final DtoMapper dtoMapper;
     private final JwtUtil jwtUtil;
+    private final CodigoVerificacionConfig codigoVerificacionConfig;
 
-    private static final int CODIGO_EXPIRACION_MINUTOS = 15;
+
 
 
     public AuthService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder,
                        EmailSender emailSender, ClienteRepository clienteRepository,
-                       DtoMapper dtoMapper, JwtUtil jwtUtil) {
+                       DtoMapper dtoMapper, JwtUtil jwtUtil, CodigoVerificacionConfig codigoVerificacionConfig) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailSender = emailSender;
         this.clienteRepository = clienteRepository;
         this.dtoMapper = dtoMapper;
         this.jwtUtil = jwtUtil;
+        this.codigoVerificacionConfig = codigoVerificacionConfig;
     }
 
 
@@ -56,16 +59,12 @@ public class AuthService {
      */
     public UsuarioResponseDTO registrarUsuarioCliente(ClienteDTO clienteDTO) throws MessagingException, IOException {
 
+        validarDatosCliente(clienteDTO);
         verificarUsuarioNoRegistrado(clienteDTO);
 
-        validarDatosCliente(clienteDTO);
-
         String codigoVerificacion = generarCodigo();
-
         Usuario usuario = crearUsuario(clienteDTO, codigoVerificacion);
         Cliente cliente = crearCliente(clienteDTO,usuario);
-
-
         emailSender.enviarCodigoVerificacion(usuario.getEmail(), codigoVerificacion);
 
         return new UsuarioResponseDTO(clienteDTO.getId(),clienteDTO.getNombre(), clienteDTO.getApellidos(),
@@ -122,7 +121,7 @@ public class AuthService {
         usuario.setRol(Rol.CLIENTE);
         usuario.setCuentaVerificada(false);
         usuario.setCodigoVerificacion(codigoVerificacion);
-        usuario.setFechaExpiracionCodigoVerificacion(LocalDateTime.now().plusMinutes(CODIGO_EXPIRACION_MINUTOS));
+        usuario.setFechaExpiracionCodigoVerificacion(LocalDateTime.now().plusMinutes(codigoVerificacionConfig.getExpiracionMinutos()));
         return usuarioRepository.save(usuario);
     }
 
@@ -151,6 +150,9 @@ public class AuthService {
         }
         if (clienteDTO.getPassword() == null || clienteDTO.getPassword().isBlank()) {
             camposFaltantes.append("Contraseña, ");
+        }
+        if(clienteDTO.getTelefono() == null || clienteDTO.getTelefono().isBlank()){
+            camposFaltantes.append("Teléfono, ");
         }
         if (clienteDTO.getFechaNacimiento() == null) {
             camposFaltantes.append("Fecha de Nacimiento, ");
@@ -189,7 +191,7 @@ public class AuthService {
         }
 
         Usuario usuario = usuarioRepository.findByEmail(loginDTO.getEmail())
-                .orElseThrow(() -> new UsuarioNoEncontradoExeption("Usuario no encontrado"));
+                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado"));
 
         if(!usuario.getEstado()){
             throw new ValidacionException("El usuario está bloqueado y no puede iniciar sesión");
@@ -218,7 +220,7 @@ public class AuthService {
         }
 
         Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new UsuarioNoEncontradoExeption("Usuario no encontrado"));
+                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado"));
 
         if(!usuario.getEstado()){
             throw new ValidacionException("El usuario está bloqueado y no puede solicitar recuperar la contraseña");
@@ -227,10 +229,10 @@ public class AuthService {
         String codigoRecuperacion = generarCodigo();
 
         usuario.setCodigoRecuperacion(codigoRecuperacion);
-        usuario.setFechaExpiracionCodigoRecuperacion(LocalDateTime.now().plusMinutes(CODIGO_EXPIRACION_MINUTOS));
+        usuario.setFechaExpiracionCodigoRecuperacion(LocalDateTime.now().plusMinutes(codigoVerificacionConfig.getExpiracionMinutos()));
 
         try {
-            emailSender.enviarCodigoVerificacion(usuario.getEmail(), codigoRecuperacion);
+            emailSender.enviarCodigoRecuperacion(usuario.getEmail(), codigoRecuperacion);
         } catch (MessagingException | IOException e) {
             throw new RuntimeException("Error al enviar el correo de recuperación", e);
         }
@@ -257,7 +259,7 @@ public class AuthService {
         }
 
         Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new UsuarioNoEncontradoExeption("El correo no está registrado"));
+                .orElseThrow(() -> new UsuarioNoEncontradoException("El correo no está registrado"));
 
         verificarCodigoRecuperacion(usuario, codigo);
 
@@ -292,7 +294,7 @@ public class AuthService {
         }
 
         Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new UsuarioNoEncontradoExeption("Usuario no encontrado"));
+                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado"));
 
         if(!usuario.getEstado()){
             throw new ValidacionException("El usuario está bloqueado y no puede solicitar un nuevo código de verificación");
@@ -301,7 +303,7 @@ public class AuthService {
         String nuevoCodigoVerificacion = generarCodigo();
 
         usuario.setCodigoVerificacion(nuevoCodigoVerificacion);
-        usuario.setFechaExpiracionCodigoVerificacion(LocalDateTime.now().plusMinutes(CODIGO_EXPIRACION_MINUTOS));
+        usuario.setFechaExpiracionCodigoVerificacion(LocalDateTime.now().plusMinutes(codigoVerificacionConfig.getExpiracionMinutos()));
 
         try {
             emailSender.enviarCodigoVerificacion(usuario.getEmail(), nuevoCodigoVerificacion);
@@ -322,7 +324,7 @@ public class AuthService {
         }
 
         Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new UsuarioNoEncontradoExeption("Usuario no encontrado"));
+                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado"));
 
         if(!usuario.getEstado()){
             throw new ValidacionException("El usuario está bloqueado y no puede solicitar un nuevo código de recuperación");
@@ -331,10 +333,10 @@ public class AuthService {
         String nuevoCodigoRecuperacion = generarCodigo();
 
         usuario.setCodigoRecuperacion(nuevoCodigoRecuperacion);
-        usuario.setFechaExpiracionCodigoRecuperacion(LocalDateTime.now().plusMinutes(CODIGO_EXPIRACION_MINUTOS));
+        usuario.setFechaExpiracionCodigoRecuperacion(LocalDateTime.now().plusMinutes(codigoVerificacionConfig.getExpiracionMinutos()));
 
         try {
-            emailSender.enviarCodigoVerificacion(usuario.getEmail(), nuevoCodigoRecuperacion);
+            emailSender.enviarCodigoRecuperacion(usuario.getEmail(), nuevoCodigoRecuperacion);
         } catch (MessagingException | IOException e) {
             throw new RuntimeException("Error al enviar el correo de recuperación", e);
         }

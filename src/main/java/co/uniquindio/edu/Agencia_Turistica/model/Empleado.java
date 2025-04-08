@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -21,17 +23,14 @@ public class Empleado {
     @JoinColumn(name = "id")
     private Usuario usuario;
 
-    @Column(nullable = false)
-    private String departamento;
+    private String telefono;
 
     @Column(nullable = false)
-    private String cargo;
-
-    @Column(nullable = false)
-    private LocalDateTime fechaContratacion;
+    private LocalDate fechaContratacion;
 
     @PrePersist
     protected void onCreate() {
-        fechaContratacion = LocalDateTime.now();
+        fechaContratacion = LocalDate.now();
     }
+
 }

@@ -5,11 +5,11 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
-
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Data
-public class ClienteDTO {
+public class EmpleadoDTO {
 
     @NotNull
     @NotBlank
@@ -25,6 +25,6 @@ public class ClienteDTO {
     private String password;
     private String rol;
     private String telefono;
-    private LocalDate fechaNacimiento;
+    private LocalDateTime fechaContratacion;
 
 }
