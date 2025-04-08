@@ -30,9 +30,15 @@ public class Usuario {
     private String password;
 
     @Column(nullable = false)
-    private String rol;
+    private Rol rol;
 
     private String codigoVerificacion;
+
+    private LocalDateTime fechaExpiracionCodigoVerificacion;
+
+    private String codigoRecuperacion;
+
+    private LocalDateTime fechaExpiracionCodigoRecuperacion;
 
     private Boolean cuentaVerificada = false;
 
@@ -40,8 +46,12 @@ public class Usuario {
 
     @PrePersist
     protected void onCreate() {
-        fechaRegistro = LocalDateTime.now();
-        cuentaVerificada = false;
+        if(fechaRegistro == null){
+            fechaRegistro = LocalDateTime.now();
+        }
+        if(cuentaVerificada == null){
+            cuentaVerificada = false;
+        }
     }
 
 }
