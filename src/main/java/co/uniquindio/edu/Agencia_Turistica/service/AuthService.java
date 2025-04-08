@@ -4,6 +4,7 @@ import co.uniquindio.edu.Agencia_Turistica.dto.ClienteDTO;
 import co.uniquindio.edu.Agencia_Turistica.dto.LoginDTO;
 import co.uniquindio.edu.Agencia_Turistica.dto.UsuarioDTO;
 import co.uniquindio.edu.Agencia_Turistica.dto.response.LoginResponseDTO;
+import co.uniquindio.edu.Agencia_Turistica.dto.response.UsuarioResponseDTO;
 import co.uniquindio.edu.Agencia_Turistica.model.Cliente;
 import co.uniquindio.edu.Agencia_Turistica.model.Rol;
 import co.uniquindio.edu.Agencia_Turistica.model.Usuario;
@@ -48,12 +49,13 @@ public class AuthService {
 
     /**
      * Registra un nuevo usuario cliente en la base de datos.
-     * @param clienteDTO
-     * @return
-     * @throws MessagingException
-     * @throws IOException
+     *
+     * @param clienteDTO Datos del cliente a registrar.
+     * @return UsuarioResponseDTO con los datos del usuario registrado.
+     * @throws MessagingException Si ocurre un error al enviar el correo electrónico.
+     * @throws IOException Si ocurre un error al procesar el correo electrónico.
      */
-    public UsuarioDTO registrarUsuarioCliente(ClienteDTO clienteDTO) throws MessagingException, IOException {
+    public UsuarioResponseDTO registrarUsuarioCliente(ClienteDTO clienteDTO) throws MessagingException, IOException {
 
         verificarUsuarioNoRegistrado(clienteDTO);
 
@@ -67,7 +69,8 @@ public class AuthService {
 
         emailSender.enviarCodigoVerificacion(usuario.getEmail(), codigoVerificacion);
 
-        return dtoMapper.mapToEntity(usuario, UsuarioDTO.class);
+        return new UsuarioResponseDTO(clienteDTO.getId(),clienteDTO.getNombre(), clienteDTO.getApellidos(),
+                clienteDTO.getEmail(), Rol.CLIENTE);
     }
 
     /**
@@ -171,7 +174,6 @@ public class AuthService {
         return String.valueOf(code);
     }
 
-
     /**
      * Esta función se encarga de iniciar sesión en la aplicación.
      * @param loginDTO Contiene el correo electrónico y la contraseña del usuario.
@@ -201,6 +203,128 @@ public class AuthService {
         String token = jwtUtil.generarToken(usuario.getId());
 
         return new LoginResponseDTO(token,usuario.getNombre());
+    }
+
+    /**
+     * Solicita la recuperación de acceso a la cuenta del usuario.
+     * @param email Correo electrónico del usuario.
+     */
+    public void solicitarRecuperacionAcceso(String email){
+        if(email == null || email.isBlank()){
+            throw new IllegalArgumentException("El correo electrónico no puede estar vacío");
+        }
+
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        String codigoRecuperacion = generarCodigo();
+
+        usuario.setCodigoRecuperacion(codigoRecuperacion);
+        usuario.setFechaExpiracionCodigoRecuperacion(LocalDateTime.now().plusMinutes(CODIGO_EXPIRACION_MINUTOS));
+
+        try {
+            emailSender.enviarCodigoVerificacion(usuario.getEmail(), codigoRecuperacion);
+        } catch (MessagingException | IOException e) {
+            throw new RuntimeException("Error al enviar el correo de recuperación", e);
+        }
+
+        usuarioRepository.save(usuario);
+    }
+
+    /**
+     * Cambia la contraseña del usuario.
+     * @param email Correo electrónico del usuario.
+     * @param codigo Código de recuperación.
+     * @param nuevaPassword Nueva contraseña.
+     */
+    public void cambiarPassword(String email, String codigo, String nuevaPassword){
+
+        if(email == null || email.isBlank()){
+            throw new IllegalArgumentException("El correo electrónico no puede estar vacío");
+        }
+        if(codigo == null || codigo.isBlank()){
+            throw new IllegalArgumentException("El código de recuperación no puede estar vacío");
+        }
+        if(nuevaPassword == null || nuevaPassword.isBlank()){
+            throw new IllegalArgumentException("La nueva contraseña no puede estar vacía");
+        }
+
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("El correo no está registrado"));
+
+        verificarCodigoRecuperacion(usuario, codigo);
+
+        usuario.setPassword(passwordEncoder.encode(nuevaPassword));
+        usuario.setCodigoRecuperacion(null);
+
+        usuarioRepository.save(usuario);
+    }
+
+    /**
+     * Verifica el código de recuperación y su fecha de expiración.
+     * @param usuario
+     * @param codigo
+     */
+    private void verificarCodigoRecuperacion(Usuario usuario, String codigo) {
+
+        if(usuario.getCodigoRecuperacion() == null || usuario.getFechaExpiracionCodigoRecuperacion().isBefore(LocalDateTime.now())){
+            throw new IllegalArgumentException("El código de recuperación ha expirado");
+        }
+        if(!usuario.getCodigoRecuperacion().equals(codigo)){
+            throw new IllegalArgumentException("El código de recuperación es incorrecto");
+        }
+    }
+
+    /**
+     * Este método solicita un nuevo código de verificación para el usuario.
+     * @param email
+     */
+    public void solicitarNuevoCodigoVerificacion(String email) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("El correo electrónico no puede estar vacío");
+        }
+
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        String nuevoCodigoVerificacion = generarCodigo();
+
+        usuario.setCodigoVerificacion(nuevoCodigoVerificacion);
+        usuario.setFechaExpiracionCodigoVerificacion(LocalDateTime.now().plusMinutes(CODIGO_EXPIRACION_MINUTOS));
+
+        try {
+            emailSender.enviarCodigoVerificacion(usuario.getEmail(), nuevoCodigoVerificacion);
+        } catch (MessagingException | IOException e) {
+            throw new RuntimeException("Error al enviar el correo de verificación", e);
+        }
+
+        usuarioRepository.save(usuario);
+    }
+
+    /**
+     * Este método solicita un nuevo código de recuperación para el usuario.
+     * @param email
+     */
+    public void solicitarNuevoCodigoRecuperacion(String email) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("El correo electrónico no puede estar vacío");
+        }
+
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        String nuevoCodigoRecuperacion = generarCodigo();
+
+        usuario.setCodigoRecuperacion(nuevoCodigoRecuperacion);
+        usuario.setFechaExpiracionCodigoRecuperacion(LocalDateTime.now().plusMinutes(CODIGO_EXPIRACION_MINUTOS));
+
+        try {
+            emailSender.enviarCodigoVerificacion(usuario.getEmail(), nuevoCodigoRecuperacion);
+        } catch (MessagingException | IOException e) {
+            throw new RuntimeException("Error al enviar el correo de recuperación", e);
+        }
+
+        usuarioRepository.save(usuario);
     }
 
 
