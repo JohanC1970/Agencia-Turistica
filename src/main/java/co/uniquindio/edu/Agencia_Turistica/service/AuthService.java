@@ -2,9 +2,10 @@ package co.uniquindio.edu.Agencia_Turistica.service;
 
 import co.uniquindio.edu.Agencia_Turistica.dto.ClienteDTO;
 import co.uniquindio.edu.Agencia_Turistica.dto.LoginDTO;
-import co.uniquindio.edu.Agencia_Turistica.dto.UsuarioDTO;
 import co.uniquindio.edu.Agencia_Turistica.dto.response.LoginResponseDTO;
 import co.uniquindio.edu.Agencia_Turistica.dto.response.UsuarioResponseDTO;
+import co.uniquindio.edu.Agencia_Turistica.exception.UsuarioNoEncontradoExeption;
+import co.uniquindio.edu.Agencia_Turistica.exception.ValidacionException;
 import co.uniquindio.edu.Agencia_Turistica.model.Cliente;
 import co.uniquindio.edu.Agencia_Turistica.model.Rol;
 import co.uniquindio.edu.Agencia_Turistica.model.Usuario;
@@ -13,8 +14,6 @@ import co.uniquindio.edu.Agencia_Turistica.repository.UsuarioRepository;
 import co.uniquindio.edu.Agencia_Turistica.security.JwtUtil;
 import co.uniquindio.edu.Agencia_Turistica.util.DtoMapper;
 import jakarta.mail.MessagingException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -82,11 +81,11 @@ public class AuthService {
     private void verificarUsuarioNoRegistrado(ClienteDTO clienteDTO) {
 
         if(usuarioRepository.existsByEmail(clienteDTO.getEmail())) {
-            throw new IllegalArgumentException("El correo electrónico ya está registrado.");
+            throw new ValidacionException("El correo electrónico ya está registrado.");
         }
 
         if(usuarioRepository.existsById(clienteDTO.getId())) {
-            throw new IllegalArgumentException("El ID ya está registrado.");
+            throw new ValidacionException("El ID ya está registrado.");
         }
     }
 
@@ -159,7 +158,7 @@ public class AuthService {
         if (camposFaltantes.length() > 0) {
             // Elimina la última coma y espacio
             camposFaltantes.setLength(camposFaltantes.length() - 2);
-            throw new IllegalArgumentException("Faltan los siguientes campos: " + camposFaltantes.toString());
+            throw new ValidacionException("Faltan los siguientes campos: " + camposFaltantes.toString());
         }
     }
 
@@ -182,22 +181,26 @@ public class AuthService {
     public LoginResponseDTO iniciarSesion(LoginDTO loginDTO){
 
         if(loginDTO.getEmail() == null || loginDTO.getEmail().isBlank()){
-            throw new IllegalArgumentException("El correo electrónico no puede estar vacío");
+            throw new ValidacionException("El correo electrónico no puede estar vacío");
         }
 
         if(loginDTO.getPassword() == null || loginDTO.getPassword().isBlank()){
-            throw new IllegalArgumentException("La contraseña no puede estar vacía");
+            throw new ValidacionException("La contraseña no puede estar vacía");
         }
 
         Usuario usuario = usuarioRepository.findByEmail(loginDTO.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+                .orElseThrow(() -> new UsuarioNoEncontradoExeption("Usuario no encontrado"));
+
+        if(!usuario.getEstado()){
+            throw new ValidacionException("El usuario está bloqueado y no puede iniciar sesión");
+        }
 
         if (!passwordEncoder.matches(loginDTO.getPassword(), usuario.getPassword())) {
-            throw new IllegalArgumentException("Contraseña incorrecta");
+            throw new ValidacionException("Contraseña incorrecta");
         }
 
         if (!usuario.getCuentaVerificada()) {
-            throw new IllegalArgumentException("La cuenta no ha sido verificada");
+            throw new ValidacionException("La cuenta no ha sido verificada");
         }
 
         String token = jwtUtil.generarToken(usuario.getId());
@@ -211,11 +214,15 @@ public class AuthService {
      */
     public void solicitarRecuperacionAcceso(String email){
         if(email == null || email.isBlank()){
-            throw new IllegalArgumentException("El correo electrónico no puede estar vacío");
+            throw new ValidacionException("El correo electrónico no puede estar vacío");
         }
 
         Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+                .orElseThrow(() -> new UsuarioNoEncontradoExeption("Usuario no encontrado"));
+
+        if(!usuario.getEstado()){
+            throw new ValidacionException("El usuario está bloqueado y no puede solicitar recuperar la contraseña");
+        }
 
         String codigoRecuperacion = generarCodigo();
 
@@ -240,17 +247,17 @@ public class AuthService {
     public void cambiarPassword(String email, String codigo, String nuevaPassword){
 
         if(email == null || email.isBlank()){
-            throw new IllegalArgumentException("El correo electrónico no puede estar vacío");
+            throw new ValidacionException("El correo electrónico no puede estar vacío");
         }
         if(codigo == null || codigo.isBlank()){
-            throw new IllegalArgumentException("El código de recuperación no puede estar vacío");
+            throw new ValidacionException("El código de recuperación no puede estar vacío");
         }
         if(nuevaPassword == null || nuevaPassword.isBlank()){
-            throw new IllegalArgumentException("La nueva contraseña no puede estar vacía");
+            throw new ValidacionException("La nueva contraseña no puede estar vacía");
         }
 
         Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("El correo no está registrado"));
+                .orElseThrow(() -> new UsuarioNoEncontradoExeption("El correo no está registrado"));
 
         verificarCodigoRecuperacion(usuario, codigo);
 
@@ -268,10 +275,10 @@ public class AuthService {
     private void verificarCodigoRecuperacion(Usuario usuario, String codigo) {
 
         if(usuario.getCodigoRecuperacion() == null || usuario.getFechaExpiracionCodigoRecuperacion().isBefore(LocalDateTime.now())){
-            throw new IllegalArgumentException("El código de recuperación ha expirado");
+            throw new ValidacionException("El código de recuperación ha expirado");
         }
         if(!usuario.getCodigoRecuperacion().equals(codigo)){
-            throw new IllegalArgumentException("El código de recuperación es incorrecto");
+            throw new ValidacionException("El código de recuperación es incorrecto");
         }
     }
 
@@ -281,11 +288,15 @@ public class AuthService {
      */
     public void solicitarNuevoCodigoVerificacion(String email) {
         if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException("El correo electrónico no puede estar vacío");
+            throw new ValidacionException("El correo electrónico no puede estar vacío");
         }
 
         Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+                .orElseThrow(() -> new UsuarioNoEncontradoExeption("Usuario no encontrado"));
+
+        if(!usuario.getEstado()){
+            throw new ValidacionException("El usuario está bloqueado y no puede solicitar un nuevo código de verificación");
+        }
 
         String nuevoCodigoVerificacion = generarCodigo();
 
@@ -307,11 +318,15 @@ public class AuthService {
      */
     public void solicitarNuevoCodigoRecuperacion(String email) {
         if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException("El correo electrónico no puede estar vacío");
+            throw new ValidacionException("El correo electrónico no puede estar vacío");
         }
 
         Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+                .orElseThrow(() -> new UsuarioNoEncontradoExeption("Usuario no encontrado"));
+
+        if(!usuario.getEstado()){
+            throw new ValidacionException("El usuario está bloqueado y no puede solicitar un nuevo código de recuperación");
+        }
 
         String nuevoCodigoRecuperacion = generarCodigo();
 

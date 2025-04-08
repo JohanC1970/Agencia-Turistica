@@ -44,6 +44,8 @@ public class Usuario {
 
     private LocalDateTime fechaRegistro;
 
+    private Boolean estado = true; //Atributo para indicar si el usuario está activo o bloqueado
+
     @PrePersist
     protected void onCreate() {
         if(fechaRegistro == null){
@@ -51,6 +53,9 @@ public class Usuario {
         }
         if(cuentaVerificada == null){
             cuentaVerificada = false;
+        }
+        if(estado == null){
+            estado = true;
         }
     }
 

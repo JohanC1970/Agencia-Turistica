@@ -18,7 +18,6 @@ public class ClienteDTO {
     private String nombre;
     private String apellidos;
 
-
     @Email
     @NotBlank
     private String email;
