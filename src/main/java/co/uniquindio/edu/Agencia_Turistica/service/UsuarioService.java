@@ -121,7 +121,11 @@ public class UsuarioService {
         emailSender.enviarCodigoVerificacion(nuevoCorreo, codigo);
     }
 
-
+    @Transactional
+    public Usuario obtenerUsuarioPorEmail(String email) {
+        return usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("El usuario no encontrado con el email proporcionado"));
+    }
 
     /**
      * Genera un código de verificación aleatorio de 6 dígitos.

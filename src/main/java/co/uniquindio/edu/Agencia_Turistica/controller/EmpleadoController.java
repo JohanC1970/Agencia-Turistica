@@ -6,6 +6,7 @@ import co.uniquindio.edu.Agencia_Turistica.dto.response.UsuarioResponseDTO;
 import co.uniquindio.edu.Agencia_Turistica.service.EmpleadoService;
 import jakarta.mail.MessagingException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -20,6 +21,7 @@ public class EmpleadoController {
         this.empleadoService = empleadoService;
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<UsuarioResponseDTO> registrarEmpleado(@RequestBody EmpleadoDTO empleadoDTO) throws MessagingException, IOException {
         UsuarioResponseDTO response = empleadoService.registrarEmpleado(empleadoDTO);
@@ -28,7 +30,6 @@ public class EmpleadoController {
 
     @PutMapping("/{id}")
     public ResponseEntity<UsuarioResponseDTO> actualizarEmpleado(@PathVariable String id, @RequestBody EmpleadoDTO empleadoDTO) {
-        empleadoDTO.setId(id);
         UsuarioResponseDTO response = empleadoService.actualizarDatosEmpleado(empleadoDTO);
         return ResponseEntity.ok(response);
     }
@@ -39,6 +40,7 @@ public class EmpleadoController {
         return ResponseEntity.ok(response);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarEmpleado(@PathVariable String id) {
         empleadoService.eliminarEmpleado(id);

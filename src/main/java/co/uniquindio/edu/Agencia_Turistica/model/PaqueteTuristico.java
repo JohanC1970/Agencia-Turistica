@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -41,9 +42,9 @@ public class PaqueteTuristico {
     @Column(nullable = false)
     private Integer cuposDisponibles;
 
-    @OneToMany(mappedBy = "paquete")
-    private List<PaqueteActividad> actividades;
+    @OneToMany(mappedBy = "paquete", cascade= CascadeType.REMOVE, orphanRemoval = true)
+    private List<PaqueteActividad> actividades = new ArrayList<>();
 
-    @OneToMany(mappedBy = "paquete")
-    private List<PaqueteHospedaje> hospedajes;
+    @OneToMany(mappedBy = "paquete", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<PaqueteHospedaje> hospedajes = new ArrayList<>();
 }

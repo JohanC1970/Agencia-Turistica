@@ -15,6 +15,10 @@ import co.uniquindio.edu.Agencia_Turistica.repository.UsuarioRepository;
 import co.uniquindio.edu.Agencia_Turistica.security.JwtUtil;
 import co.uniquindio.edu.Agencia_Turistica.util.DtoMapper;
 import jakarta.mail.MessagingException;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -32,13 +36,12 @@ public class AuthService {
     private final DtoMapper dtoMapper;
     private final JwtUtil jwtUtil;
     private final CodigoVerificacionConfig codigoVerificacionConfig;
-
-
+    private final AuthenticationManager authenticationManager;
 
 
     public AuthService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder,
                        EmailSender emailSender, ClienteRepository clienteRepository,
-                       DtoMapper dtoMapper, JwtUtil jwtUtil, CodigoVerificacionConfig codigoVerificacionConfig) {
+                       DtoMapper dtoMapper, JwtUtil jwtUtil, CodigoVerificacionConfig codigoVerificacionConfig, AuthenticationManager authenticationManager) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailSender = emailSender;
@@ -46,6 +49,7 @@ public class AuthService {
         this.dtoMapper = dtoMapper;
         this.jwtUtil = jwtUtil;
         this.codigoVerificacionConfig = codigoVerificacionConfig;
+        this.authenticationManager = authenticationManager;
     }
 
 
@@ -190,24 +194,19 @@ public class AuthService {
             throw new ValidacionException("La contraseña no puede estar vacía");
         }
 
-        Usuario usuario = usuarioRepository.findByEmail(loginDTO.getEmail())
-                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado"));
+        try{
 
-        if(!usuario.getEstado()){
-            throw new ValidacionException("El usuario está bloqueado y no puede iniciar sesión");
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(loginDTO.getEmail(), loginDTO.getPassword())
+            );
+
+            Usuario usuario = (Usuario) authentication.getPrincipal();
+            String token = jwtUtil.generarToken(usuario.getId());
+            return new LoginResponseDTO(token, usuario.getEmail());
+        }catch (BadCredentialsException e){
+            throw new ValidacionException("Credenciales inválidas");
         }
 
-        if (!passwordEncoder.matches(loginDTO.getPassword(), usuario.getPassword())) {
-            throw new ValidacionException("Contraseña incorrecta");
-        }
-
-        if (!usuario.getCuentaVerificada()) {
-            throw new ValidacionException("La cuenta no ha sido verificada");
-        }
-
-        String token = jwtUtil.generarToken(usuario.getId());
-
-        return new LoginResponseDTO(token,usuario.getNombre());
     }
 
     /**
