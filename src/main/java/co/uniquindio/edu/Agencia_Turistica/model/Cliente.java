@@ -16,7 +16,7 @@ public class Cliente {
     @Id
     private String id;
 
-    @OneToOne
+    @OneToOne(cascade = CascadeType.PERSIST)
     @MapsId
     @JoinColumn(name = "id")
     private Usuario usuario;

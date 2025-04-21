@@ -12,6 +12,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
 
 @Configuration
 public class SecurityConfig {
@@ -26,15 +31,29 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Configura CORS usando el bean
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/css/**", "/js/**", "/images/**", "/", "/home", "/login", "/public/**", "/api/auth/**").permitAll() // Recursos estáticos y rutas públicas
-                        .requestMatchers("/api/administradores/**").hasRole("ADMIN") // Solo administradores
-                        .requestMatchers("/api/empleados/**").hasAnyRole("ADMIN", "EMPLEADO") // Administradores y empleados
-                        .anyRequest().authenticated() // Todas las demás rutas requieren autenticación
+                        .requestMatchers("/css/**", "/js/**", "/images/**", "/", "/home", "/login", "/public/**", "/api/auth/**").permitAll()
+                        .requestMatchers("/api/administradores/**").hasRole("ADMIN")
+                        .requestMatchers("/api/empleados/**").hasAnyRole("ADMIN", "EMPLEADO")
+                        .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(List.of("http://localhost:8080")); // Cambia a la URL de tu servidor Spring Boot si es diferente
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 
     @Bean

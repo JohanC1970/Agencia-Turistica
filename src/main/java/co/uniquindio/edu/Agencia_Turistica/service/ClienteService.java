@@ -142,7 +142,7 @@ public class ClienteService {
         }
         if (camposFaltantes.length() > 0) {
             camposFaltantes.setLength(camposFaltantes.length() - 2);
-            throw new ValidacionException("Faltan los siguientes campos: " + camposFaltantes.toString());
+            throw new ValidacionException("Faltan los siguientes campos: " + camposFaltantes);
         }
     }
 

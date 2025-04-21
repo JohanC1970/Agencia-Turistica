@@ -15,6 +15,7 @@ import co.uniquindio.edu.Agencia_Turistica.repository.UsuarioRepository;
 import co.uniquindio.edu.Agencia_Turistica.security.JwtUtil;
 import co.uniquindio.edu.Agencia_Turistica.util.DtoMapper;
 import jakarta.mail.MessagingException;
+import jakarta.transaction.Transactional;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -53,6 +54,7 @@ public class AuthService {
     }
 
 
+    @Transactional
     /**
      * Registra un nuevo usuario cliente en la base de datos.
      *
@@ -67,9 +69,30 @@ public class AuthService {
         verificarUsuarioNoRegistrado(clienteDTO);
 
         String codigoVerificacion = generarCodigo();
-        Usuario usuario = crearUsuario(clienteDTO, codigoVerificacion);
-        Cliente cliente = crearCliente(clienteDTO,usuario);
-        emailSender.enviarCodigoVerificacion(usuario.getEmail(), codigoVerificacion);
+
+        Usuario usuario = new Usuario();
+        usuario.setId(clienteDTO.getId());
+        usuario.setNombre(clienteDTO.getNombre());
+        usuario.setApellido(clienteDTO.getApellidos());
+        usuario.setEmail(clienteDTO.getEmail());
+        usuario.setPassword(passwordEncoder.encode(clienteDTO.getPassword()));
+        usuario.setRol(Rol.CLIENTE);
+        usuario.setCuentaVerificada(false);
+        usuario.setCodigoVerificacion(codigoVerificacion);
+        usuario.setFechaExpiracionCodigoVerificacion(LocalDateTime.now().plusMinutes(codigoVerificacionConfig.getExpiracionMinutos()));
+
+        Cliente cliente = new Cliente();
+        cliente.setUsuario(usuario);
+        cliente.setTelefono(clienteDTO.getTelefono());
+        cliente.setFechaNacimiento(clienteDTO.getFechaNacimiento());
+        clienteRepository.save(cliente);
+
+        try {
+            emailSender.enviarCodigoVerificacion(usuario.getEmail(), codigoVerificacion);
+        } catch (MessagingException | IOException e) {
+            e.printStackTrace(); // Registra el error en los logs
+            throw new RuntimeException("Error al enviar el correo de verificación", e);
+        }
 
         return new UsuarioResponseDTO(clienteDTO.getId(),clienteDTO.getNombre(), clienteDTO.getApellidos(),
                 clienteDTO.getEmail(), Rol.CLIENTE);
@@ -164,7 +187,7 @@ public class AuthService {
         if (camposFaltantes.length() > 0) {
             // Elimina la última coma y espacio
             camposFaltantes.setLength(camposFaltantes.length() - 2);
-            throw new ValidacionException("Faltan los siguientes campos: " + camposFaltantes.toString());
+            throw new ValidacionException("Faltan los siguientes campos: " + camposFaltantes);
         }
     }
 

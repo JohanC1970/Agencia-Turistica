@@ -160,7 +160,7 @@ public class EmpleadoService {
         if (camposFaltantes.length() > 0) {
             // Elimina la última coma y espacio
             camposFaltantes.setLength(camposFaltantes.length() - 2);
-            throw new ValidacionException("Faltan los siguientes campos: " + camposFaltantes.toString());
+            throw new ValidacionException("Faltan los siguientes campos: " + camposFaltantes);
         }
     }
 

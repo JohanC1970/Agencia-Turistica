@@ -35,6 +35,8 @@ public class EmailSender {
         helper.setSubject("Código de verificación");
         helper.setText(html, true);
         helper.setFrom(correoReminente);
+
+        mailSender.send(mensaje);
     }
 
     public void enviarCodigoRecuperacion(String destino, String codigo) throws IOException, MessagingException {
@@ -49,5 +51,7 @@ public class EmailSender {
         helper.setSubject("Código de verificación");
         helper.setText(html, true);
         helper.setFrom(correoReminente);
+
+        mailSender.send(mensaje);
     }
 }

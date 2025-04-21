@@ -9,7 +9,7 @@ import java.util.List;
 @Repository
 public interface ActividadRepository extends JpaRepository<Actividad, Integer> {
     List<Actividad> findByUbicacionContaining(String ubicacion);
-    List<Actividad> findByFechaHoraAfter(LocalDateTime fecha);
-    List<Actividad> findByFechaHoraBetween(LocalDateTime fechaInicio, LocalDateTime fechaFin);
+    List<Actividad> findByFechaInicioAfter(LocalDateTime fecha);
+    List<Actividad> findByFechaInicioBetween(LocalDateTime fechaInicio, LocalDateTime fechaFin);
     List<Actividad> findByCuposDisponiblesGreaterThan(Integer cupos);
 }
