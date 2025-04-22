@@ -13,6 +13,7 @@ import co.uniquindio.edu.Agencia_Turistica.model.Usuario;
 import co.uniquindio.edu.Agencia_Turistica.repository.ClienteRepository;
 import co.uniquindio.edu.Agencia_Turistica.repository.UsuarioRepository;
 import jakarta.mail.MessagingException;
+import jakarta.transaction.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -27,17 +28,20 @@ public class ClienteService {
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final CodigoVerificacionConfig codigoVerificacionConfig;
+    private final EmailSender emailSender;
 
     public ClienteService(ClienteRepository clienteRepository, UsuarioRepository usuarioRepository,
-                          PasswordEncoder passwordEncoder, CodigoVerificacionConfig codigoVerificacionConfig) {
+                          PasswordEncoder passwordEncoder, CodigoVerificacionConfig codigoVerificacionConfig, EmailSender emailSender) {
         this.clienteRepository = clienteRepository;
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.codigoVerificacionConfig = codigoVerificacionConfig;
+        this.emailSender = emailSender;
     }
 
     //-----------------METODOS CRUD---------------------
 
+    @Transactional
     /**
      * Método para registrar un cliente en el sistema.
      * @param clienteDTO
@@ -52,6 +56,13 @@ public class ClienteService {
         String codigo = generarCodigo();
         Usuario usuario = crearUsuario(clienteDTO, codigo);
         Cliente cliente = crearCliente(clienteDTO, usuario);
+
+        try {
+            emailSender.enviarCodigoVerificacion(usuario.getEmail(), codigo);
+        } catch (MessagingException | IOException e) {
+            e.printStackTrace(); // Registra el error en los logs
+            throw new RuntimeException("Error al enviar el correo de verificación", e);
+        }
 
         return new UsuarioResponseDTO(clienteDTO.getId(), clienteDTO.getNombre(), clienteDTO.getApellidos(),
                 clienteDTO.getEmail(), Rol.CLIENTE);
@@ -167,7 +178,6 @@ public class ClienteService {
      */
     private Cliente crearCliente(ClienteDTO clienteDTO, Usuario usuario) {
         Cliente cliente = new Cliente();
-        cliente.setId(clienteDTO.getId());
         cliente.setTelefono(clienteDTO.getTelefono());
         cliente.setFechaNacimiento(clienteDTO.getFechaNacimiento());
         cliente.setUsuario(usuario);
@@ -191,7 +201,7 @@ public class ClienteService {
         usuario.setCuentaVerificada(false);
         usuario.setCodigoVerificacion(codigoVerificacion);
         usuario.setFechaExpiracionCodigoVerificacion(LocalDateTime.now().plusMinutes(codigoVerificacionConfig.getExpiracionMinutos()));
-        return usuarioRepository.save(usuario);
+        return usuario;
     }
 
     /**

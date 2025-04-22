@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validar Cuenta</title>
+    <link rel="stylesheet" th:href="@{/css/validar-cuenta.css}">
+</head>
+<body>
+<div class="container">
+    <div class="validar-card">
+        <h2>Validar Cuenta</h2>
+        <p class="info-text">Ingresa tu correo electrónico y te enviaremos un código para validar tu cuenta.</p>
+
+        <form th:action="@{/validar-cuenta}" method="post" id="validarForm">
+            <div class="form-group">
+                <label for="email">Correo Electrónico</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+
+            <div class="form-group">
+                <button type="submit" class="btn-primary">Enviar Código</button>
+            </div>
+
+            <div class="links">
+                <a th:href="@{/api/auth/login}" class="link">Volver al inicio de sesión</a>
+            </div>
+        </form>
+    </div>
+</div>
+<script th:src="@{/js/validar-cuenta.js}"></script>
+</body>
+</html>

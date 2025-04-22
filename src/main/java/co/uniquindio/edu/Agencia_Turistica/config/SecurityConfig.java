@@ -33,9 +33,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Configura CORS usando el bean
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/css/**", "/js/**", "/images/**", "/", "/home", "/login", "/public/**", "/api/auth/**").permitAll()
-                        .requestMatchers("/api/administradores/**").hasRole("ADMIN")
-                        .requestMatchers("/api/empleados/**").hasAnyRole("ADMIN", "EMPLEADO")
+                        .requestMatchers("/registro", "/css/**", "/js/**", "/images/**", "/", "/home", "/login", "/public/**", "/api/auth/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -46,7 +44,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:8080")); // Cambia a la URL de tu servidor Spring Boot si es diferente
+        configuration.setAllowedOrigins(List.of("http://localhost:8080"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

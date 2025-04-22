@@ -1,162 +1,38 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Autenticación - Agencia Turística</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión</title>
+    <link rel="stylesheet" th:href="@{/css/login.css}">
 </head>
-<body class="bg-gradient-to-r from-blue-100 to-indigo-200 flex items-center justify-center min-h-screen">
-
-<div class="bg-white shadow-xl rounded-xl p-10 max-w-lg w-full transition-all duration-500">
-    <div class="flex justify-around mb-8">
-        <button onclick="mostrar('login')" class="text-blue-700 font-semibold hover:underline">Iniciar Sesión</button>
-        <button onclick="mostrar('register')" class="text-blue-700 font-semibold hover:underline">Registrarse</button>
-        <button onclick="mostrar('recover')" class="text-blue-700 font-semibold hover:underline">Recuperar</button>
-        <button onclick="mostrar('verify')" class="text-blue-700 font-semibold hover:underline">Verificar</button>
+<body>
+<div class="container">
+    <div class="login-card">
+        <h2>Iniciar Sesión</h2>
+        <form th:action="@{/login}" method="post" id="loginForm">
+            <div class="form-group">
+                <label for="email">Correo Electrónico</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Contraseña</label>
+                <input type="password" id="password" name="password" required>
+                <span class="toggle-password" onclick="togglePassword('password')">
+                        <i class="eye-icon">👁️</i>
+                    </span>
+            </div>
+            <div class="form-group">
+                <button type="submit" class="btn-primary">Iniciar Sesión</button>
+            </div>
+            <div class="links">
+                <a th:href="@{/api/auth/registro}" class="link">Registrarse</a>
+                <a th:href="@{/api/auth/recuperar-password}" class="link">Recuperar Contraseña</a>
+                <a th:href="@{/api/auth/validar-cuenta}" class="link">Validar Cuenta</a>
+            </div>
+        </form>
     </div>
-
-    <!-- LOGIN -->
-    <form id="loginForm" class="space-y-4 transition-all duration-300" style="display: block;">
-        <h2 class="text-2xl font-bold text-gray-800 text-center mb-4">Iniciar Sesión</h2>
-        <input type="email" id="loginEmail" placeholder="Correo" class="input" required>
-        <input type="password" id="loginPassword" placeholder="Contraseña" class="input" required>
-        <button class="btn">Iniciar sesión</button>
-    </form>
-
-    <!-- REGISTRO -->
-    <form id="registerForm" class="space-y-4 hidden transition-all duration-300">
-        <h2 class="text-2xl font-bold text-gray-800 text-center mb-4">Registrarse</h2>
-        <input type="text" id="nombre" placeholder="Nombre" class="input" required>
-        <input type="text" id="apellidos" placeholder="Apellidos" class="input" required>
-        <input type="text" id="id" placeholder="Identificación" class="input" required>
-        <input type="email" id="email" placeholder="Correo electrónico" class="input" required>
-        <input type="password" id="password" placeholder="Contraseña" class="input" required>
-        <input type="text" id="telefono" placeholder="Teléfono" class="input" required>
-        <input type="date" id="fechaNacimiento" class="input" required>
-        <button class="btn">Registrarse</button>
-    </form>
-
-
-    <!-- RECUPERAR -->
-    <form id="recoverForm" class="space-y-4 hidden transition-all duration-300">
-        <h2 class="text-2xl font-bold text-gray-800 text-center mb-4">Recuperar Contraseña</h2>
-        <input type="email" id="recoverEmail" placeholder="Correo electrónico" class="input" required>
-        <button class="btn">Enviar código</button>
-    </form>
-
-    <!-- VERIFICAR -->
-    <form id="verifyForm" class="space-y-4 hidden transition-all duration-300">
-        <h2 class="text-2xl font-bold text-gray-800 text-center mb-4">Verificar Cuenta</h2>
-        <input type="email" id="verifyEmail" placeholder="Correo electrónico" class="input" required>
-        <button class="btn">Reenviar código</button>
-    </form>
 </div>
-
-<!-- Scripts -->
-<script>
-    function resetForms() {
-        document.querySelectorAll("form").forEach(form => form.reset());
-    }
-
-    function mostrar(id) {
-        resetForms();
-        document.querySelectorAll("form").forEach(f => f.style.display = "none");
-        document.getElementById(id + "Form").style.display = "block";
-    }
-
-    const headers = { 'Content-Type': 'application/json' };
-
-    document.getElementById("loginForm").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const res = await fetch("/api/auth/login", {
-            method: "POST",
-            headers,
-            body: JSON.stringify({
-                email: document.getElementById("loginEmail").value,
-                password: document.getElementById("loginPassword").value
-            })
-        });
-        if (res.ok) {
-            const data = await res.json();
-            alert("Bienvenido: " + data.nombre);
-        } else {
-            alert("Login fallido");
-        }
-        resetForms();
-    });
-
-    document.getElementById("registerForm").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const res = await fetch("/api/auth/register", {
-            method: "POST",
-            headers,
-            body: JSON.stringify({
-                nombre: document.getElementById("nombre").value,
-                apellidos: document.getElementById("apellidos").value,
-                email: document.getElementById("email").value,
-                password: document.getElementById("password").value,
-                telefono: document.getElementById("telefono").value,
-                fechaNacimiento: document.getElementById("fechaNacimiento").value,
-                id: document.getElementById("id").value
-            })
-        });
-        alert(res.ok ? "Registro exitoso" : "Error al registrarse");
-        resetForms();
-    });
-
-    document.getElementById("recoverForm").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const res = await fetch("/api/auth/recover?email=" + document.getElementById("recoverEmail").value, {
-            method: "POST"
-        });
-        alert(res.ok ? "Correo de recuperación enviado" : "Error");
-        resetForms();
-    });
-
-    document.getElementById("verifyForm").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const res = await fetch("/api/auth/resend-verification?email=" + document.getElementById("verifyEmail").value, {
-            method: "POST"
-        });
-        alert(res.ok ? "Código reenviado" : "Error");
-        resetForms();
-    });
-</script>
-
-<style>
-    .input {
-        width: 100%;
-        padding: 0.75rem;
-        border: 1px solid #ccc;
-        border-radius: 0.5rem;
-        outline: none;
-        transition: border-color 0.3s, box-shadow 0.3s;
-    }
-
-    .input:focus {
-        border-color: #2563eb;
-        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.3);
-    }
-
-    .btn {
-        width: 100%;
-        background-color: #2563eb;
-        color: white;
-        padding: 0.75rem;
-        border-radius: 0.5rem;
-        font-weight: 600;
-        transition: background-color 0.3s, transform 0.2s;
-    }
-
-    .btn:hover {
-        background-color: #1e40af;
-        transform: translateY(-1px);
-    }
-
-    .btn:active {
-        transform: scale(0.98);
-    }
-</style>
-
+<script th:src="@{/js/login.js}"></script>
 </body>
 </html>

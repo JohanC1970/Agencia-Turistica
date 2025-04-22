@@ -1,6 +1,7 @@
 package co.uniquindio.edu.Agencia_Turistica.service;
 
 import co.uniquindio.edu.Agencia_Turistica.dto.UsuarioDTO;
+import co.uniquindio.edu.Agencia_Turistica.exception.UsuarioNoEncontradoException;
 import co.uniquindio.edu.Agencia_Turistica.exception.ValidacionException;
 import co.uniquindio.edu.Agencia_Turistica.model.Usuario;
 import co.uniquindio.edu.Agencia_Turistica.repository.UsuarioRepository;
@@ -11,6 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.Random;
 
 @Service
@@ -50,26 +52,40 @@ public class UsuarioService {
     }
 
     /**
-     * Método para cambiar la contraseña de un usuario
-     * @param usuarioDTO
-     * @param nuevaPassword
+     * Cambia la contraseña del usuario.
+     * @param email Correo electrónico del usuario.
+     * @param nuevaPassword Nueva contraseña.
      */
-    public void cambiarPassword(UsuarioDTO usuarioDTO, String nuevaPassword) {
+    public void cambiarPassword(String email, String nuevaPassword){
 
-        if(usuarioDTO.getId() == null || usuarioDTO.getId().isEmpty()) {
-            throw new ValidacionException("El ID del usuario no puede ser nulo o vacío");
+        if(email == null || email.isBlank()){
+            throw new ValidacionException("El correo electrónico no puede estar vacío");
         }
-        if(nuevaPassword == null || nuevaPassword.isEmpty()) {
-            throw new ValidacionException("La nueva contraseña no puede ser nula o vacía");
-        }
-        Usuario usuario = usuarioRepository.findById(usuarioDTO.getId())
-                .orElseThrow(() -> new IllegalArgumentException("El usuario no existe"));
 
-        if(usuario.getPassword().equals(nuevaPassword)) {
-            throw new ValidacionException("La nueva contraseña no puede ser igual a la contraseña actual");
-        } else {
-            usuario.setPassword(passwordEncoder.encode(nuevaPassword));
-            usuarioRepository.save(usuario);
+        if(nuevaPassword == null || nuevaPassword.isBlank()){
+            throw new ValidacionException("La nueva contraseña no puede estar vacía");
+        }
+
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new UsuarioNoEncontradoException("El correo no está registrado"));
+
+
+        usuario.setPassword(passwordEncoder.encode(nuevaPassword));
+        usuario.setCodigoRecuperacion(null);
+
+        usuarioRepository.save(usuario);
+    }
+
+    public void verificarCodigoRecuperacion(String email, String codigo) {
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado"));
+
+        if (usuario.getCodigoRecuperacion() == null || usuario.getFechaExpiracionCodigoRecuperacion().isBefore(LocalDateTime.now())) {
+            throw new ValidacionException("El código de recuperación ha expirado");
+        }
+
+        if (!usuario.getCodigoRecuperacion().equals(codigo)) {
+            throw new ValidacionException("El código de recuperación es incorrecto");
         }
     }
 
@@ -138,6 +154,22 @@ public class UsuarioService {
         return String.valueOf(code);
     }
 
+    public void validarCuenta(String email, String codigo) {
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("El usuario no encontrado con el email proporcionado"));
+
+        if(usuario.getCodigoRecuperacion().isEmpty() || usuario.getCodigoRecuperacion() == null) {
+            throw new ValidacionException("El usuario no ha solicitado un codigo de verificacion");
+        }
+
+        if(usuario.getCodigoRecuperacion().equals(codigo)) {
+            usuario.setEstado(true);
+            usuario.setCodigoRecuperacion(null);
+            usuarioRepository.save(usuario);
+        } else {
+            throw new ValidacionException("El código de verificación no es válido");
+        }
+    }
 
 
 }

@@ -54,50 +54,6 @@ public class AuthService {
     }
 
 
-    @Transactional
-    /**
-     * Registra un nuevo usuario cliente en la base de datos.
-     *
-     * @param clienteDTO Datos del cliente a registrar.
-     * @return UsuarioResponseDTO con los datos del usuario registrado.
-     * @throws MessagingException Si ocurre un error al enviar el correo electrónico.
-     * @throws IOException Si ocurre un error al procesar el correo electrónico.
-     */
-    public UsuarioResponseDTO registrarUsuarioCliente(ClienteDTO clienteDTO) throws MessagingException, IOException {
-
-        validarDatosCliente(clienteDTO);
-        verificarUsuarioNoRegistrado(clienteDTO);
-
-        String codigoVerificacion = generarCodigo();
-
-        Usuario usuario = new Usuario();
-        usuario.setId(clienteDTO.getId());
-        usuario.setNombre(clienteDTO.getNombre());
-        usuario.setApellido(clienteDTO.getApellidos());
-        usuario.setEmail(clienteDTO.getEmail());
-        usuario.setPassword(passwordEncoder.encode(clienteDTO.getPassword()));
-        usuario.setRol(Rol.CLIENTE);
-        usuario.setCuentaVerificada(false);
-        usuario.setCodigoVerificacion(codigoVerificacion);
-        usuario.setFechaExpiracionCodigoVerificacion(LocalDateTime.now().plusMinutes(codigoVerificacionConfig.getExpiracionMinutos()));
-
-        Cliente cliente = new Cliente();
-        cliente.setUsuario(usuario);
-        cliente.setTelefono(clienteDTO.getTelefono());
-        cliente.setFechaNacimiento(clienteDTO.getFechaNacimiento());
-        clienteRepository.save(cliente);
-
-        try {
-            emailSender.enviarCodigoVerificacion(usuario.getEmail(), codigoVerificacion);
-        } catch (MessagingException | IOException e) {
-            e.printStackTrace(); // Registra el error en los logs
-            throw new RuntimeException("Error al enviar el correo de verificación", e);
-        }
-
-        return new UsuarioResponseDTO(clienteDTO.getId(),clienteDTO.getNombre(), clienteDTO.getApellidos(),
-                clienteDTO.getEmail(), Rol.CLIENTE);
-    }
-
     /**
      * Verifica si el usuario ya está registrado en la base de datos.
      *
@@ -115,42 +71,7 @@ public class AuthService {
         }
     }
 
-    /**
-     * Crea un nuevo cliente a partir de los datos del cliente y el usuario.
-     *
-     * @param clienteDTO Datos del cliente.
-     * @param usuario Usuario asociado al cliente.
-     * @return Cliente creado.
-     */
-    private Cliente crearCliente(ClienteDTO clienteDTO, Usuario usuario) {
-        Cliente cliente = new Cliente();
-        cliente.setId(usuario.getId());
-        cliente.setUsuario(usuario);
-        cliente.setTelefono(clienteDTO.getTelefono());
-        cliente.setFechaNacimiento(clienteDTO.getFechaNacimiento());
-        return clienteRepository.save(cliente);
-    }
 
-    /**
-     * Crea un nuevo usuario a partir de los datos del cliente.
-     *
-     * @param clienteDTO Datos del cliente.
-     * @param codigoVerificacion Código de verificación.
-     * @return Usuario creado.
-     */
-    private Usuario crearUsuario(ClienteDTO clienteDTO, String codigoVerificacion) {
-        Usuario usuario = new Usuario();
-        usuario.setId(clienteDTO.getId());
-        usuario.setNombre(clienteDTO.getNombre());
-        usuario.setApellido(clienteDTO.getApellidos());
-        usuario.setEmail(clienteDTO.getEmail());
-        usuario.setPassword(passwordEncoder.encode(clienteDTO.getPassword()));
-        usuario.setRol(Rol.CLIENTE);
-        usuario.setCuentaVerificada(false);
-        usuario.setCodigoVerificacion(codigoVerificacion);
-        usuario.setFechaExpiracionCodigoVerificacion(LocalDateTime.now().plusMinutes(codigoVerificacionConfig.getExpiracionMinutos()));
-        return usuarioRepository.save(usuario);
-    }
 
     /**
      * Válida los datos del cliente.
@@ -262,49 +183,7 @@ public class AuthService {
         usuarioRepository.save(usuario);
     }
 
-    /**
-     * Cambia la contraseña del usuario.
-     * @param email Correo electrónico del usuario.
-     * @param codigo Código de recuperación.
-     * @param nuevaPassword Nueva contraseña.
-     */
-    public void cambiarPassword(String email, String codigo, String nuevaPassword){
 
-        if(email == null || email.isBlank()){
-            throw new ValidacionException("El correo electrónico no puede estar vacío");
-        }
-        if(codigo == null || codigo.isBlank()){
-            throw new ValidacionException("El código de recuperación no puede estar vacío");
-        }
-        if(nuevaPassword == null || nuevaPassword.isBlank()){
-            throw new ValidacionException("La nueva contraseña no puede estar vacía");
-        }
-
-        Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new UsuarioNoEncontradoException("El correo no está registrado"));
-
-        verificarCodigoRecuperacion(usuario, codigo);
-
-        usuario.setPassword(passwordEncoder.encode(nuevaPassword));
-        usuario.setCodigoRecuperacion(null);
-
-        usuarioRepository.save(usuario);
-    }
-
-    /**
-     * Verifica el código de recuperación y su fecha de expiración.
-     * @param usuario
-     * @param codigo
-     */
-    private void verificarCodigoRecuperacion(Usuario usuario, String codigo) {
-
-        if(usuario.getCodigoRecuperacion() == null || usuario.getFechaExpiracionCodigoRecuperacion().isBefore(LocalDateTime.now())){
-            throw new ValidacionException("El código de recuperación ha expirado");
-        }
-        if(!usuario.getCodigoRecuperacion().equals(codigo)){
-            throw new ValidacionException("El código de recuperación es incorrecto");
-        }
-    }
 
     /**
      * Este método solicita un nuevo código de verificación para el usuario.
@@ -365,6 +244,7 @@ public class AuthService {
 
         usuarioRepository.save(usuario);
     }
+
 
 
 }
